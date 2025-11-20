@@ -1,0 +1,3351 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CuacaTani - Aplikasi Pintar Cuaca & Jadwal untuk Petani</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(to bottom, #e3f2fd, #bbdefb);
+            color: #333;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        
+        header {
+            background: linear-gradient(to right, #4CAF50, #2E7D32);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .app-title {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 10px;
+        }
+        
+        .app-title i {
+            font-size: 2rem;
+        }
+        
+        .date-time {
+            font-size: 1.2rem;
+            margin-top: 10px;
+            font-weight: 500;
+        }
+        
+        .auto-refresh-status {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            margin-top: 5px;
+            display: inline-block;
+            transition: all 0.3s ease;
+        }
+        
+        .auto-refresh-status.refreshing {
+            background: rgba(76, 175, 80, 0.3);
+            animation: pulse-gentle 2s infinite;
+        }
+        
+        @keyframes pulse-gentle {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+        
+        hr {
+            border: none;
+            height: 2px;
+            background-color: #e0e0e0;
+            margin: 15px 0;
+        }
+        
+        .section {
+            padding: 20px;
+        }
+        
+        .section-title {
+            font-size: 1.3rem;
+            margin-bottom: 15px;
+            color: #2E7D32;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .section-title i {
+            font-size: 1.2rem;
+        }
+        
+        .map-container {
+            height: 300px;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 15px;
+            border: 2px solid #e0e0e0;
+        }
+        
+        #map {
+            height: 100%;
+            width: 100%;
+        }
+        
+        .location-controls {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .location-input {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 1rem;
+        }
+        
+        .location-btn {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        
+        .location-btn:hover {
+            background-color: #2E7D32;
+        }
+        
+        .location-info {
+            background-color: #f5f5f5;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 10px;
+        }
+        
+        .coordinates {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        
+        .coord-item {
+            text-align: center;
+            flex: 1;
+        }
+        
+        .coord-value {
+            font-weight: bold;
+            color: #2E7D32;
+        }
+        
+        .map-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .map-btn {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            flex: 1;
+        }
+        
+        .map-btn:hover {
+            background-color: #2E7D32;
+        }
+        
+        .weather-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background-color: #f9f9f9;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+        }
+        
+        .stat-card.weather-alert {
+            background: linear-gradient(135deg, #ffebee, #ffcdd2);
+            border-left: 4px solid #f44336;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+            100% { transform: scale(1); }
+        }
+        
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #2E7D32;
+            margin: 5px 0;
+        }
+        
+        .stat-card.weather-alert .stat-value {
+            color: #f44336;
+        }
+        
+        .stat-label {
+            font-size: 0.9rem;
+            color: #666;
+        }
+        
+        .forecast-tabs {
+            display: flex;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .forecast-tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .forecast-tab.active {
+            border-bottom: 2px solid #4CAF50;
+            color: #4CAF50;
+            font-weight: 600;
+        }
+        
+        .forecast-content {
+            display: none;
+        }
+        
+        .forecast-content.active {
+            display: block;
+        }
+        
+        .forecast-container {
+            display: flex;
+            overflow-x: auto;
+            gap: 12px;
+            padding: 15px 5px;
+            margin-bottom: 20px;
+        }
+        
+        .forecast-7day {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 10px;
+            padding: 15px 5px;
+        }
+        
+        .forecast-day {
+            min-width: 110px;
+            text-align: center;
+            padding: 15px 10px;
+            background: linear-gradient(135deg, #f5f5f5, #e8f5e9);
+            border-radius: 10px;
+            border: 1px solid #e0e0e0;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .forecast-7day .forecast-day {
+            min-width: auto;
+            padding: 12px 8px;
+        }
+        
+        .forecast-day:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        .day-name {
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #2E7D32;
+        }
+        
+        .day-date {
+            font-size: 0.8rem;
+            color: #666;
+            margin-bottom: 8px;
+        }
+        
+        .day-icon {
+            font-size: 2rem;
+            margin: 8px 0;
+        }
+        
+        .forecast-7day .day-icon {
+            font-size: 1.8rem;
+        }
+        
+        .day-temp {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #2E7D32;
+            margin: 5px 0;
+        }
+        
+        .forecast-7day .day-temp {
+            font-size: 1rem;
+        }
+        
+        .day-desc {
+            font-size: 0.75rem;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .forecast-7day .day-desc {
+            font-size: 0.7rem;
+        }
+        
+        .day-details {
+            margin-top: 8px;
+            display: flex;
+            justify-content: space-around;
+            font-size: 0.7rem;
+        }
+        
+        .schedule-section {
+            background-color: #E8F5E9;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .schedule-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .schedule-card {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        
+        .schedule-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .schedule-icon {
+            font-size: 1.5rem;
+            margin-right: 10px;
+        }
+        
+        .schedule-title {
+            font-weight: 600;
+            color: #2E7D32;
+            flex: 1;
+        }
+        
+        .schedule-toggle {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+        
+        .schedule-toggle input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .schedule-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 24px;
+        }
+        
+        .schedule-slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        
+        input:checked + .schedule-slider {
+            background-color: #4CAF50;
+        }
+        
+        input:checked + .schedule-slider:before {
+            transform: translateX(26px);
+        }
+        
+        .schedule-details {
+            margin-top: 10px;
+        }
+        
+        .schedule-time {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .time-input {
+            padding: 5px 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            width: 80px;
+        }
+        
+        .schedule-days {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+        
+        .day-btn {
+            padding: 5px 10px;
+            border: 1px solid #ddd;
+            background: #f5f5f5;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+        
+        .day-btn.active {
+            background: #4CAF50;
+            color: white;
+            border-color: #2E7D32;
+        }
+        
+        .test-btn {
+            background: #2196F3;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            margin-top: 5px;
+            width: 100%;
+        }
+        
+        .test-btn:hover {
+            background: #1976D2;
+        }
+        
+        .settings-panel {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-radius: 10px;
+        }
+        
+        .config-status {
+            background-color: #E8F5E9;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+        
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+        
+        .status-ok {
+            color: #2E7D32;
+            font-weight: 600;
+        }
+        
+        .status-missing {
+            color: #F44336;
+            font-weight: 600;
+        }
+        
+        .notification-btn {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background-color 0.3s;
+            margin-top: 10px;
+            width: 100%;
+            font-size: 1rem;
+        }
+        
+        .notification-btn:hover {
+            background-color: #2E7D32;
+        }
+        
+        .btn-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 15px;
+            color: #666;
+            font-size: 0.8rem;
+            border-top: 1px solid #e0e0e0;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+        
+        .loading-forecast {
+            text-align: center;
+            padding: 30px;
+            color: #666;
+            font-style: italic;
+        }
+        
+        .error-forecast {
+            text-align: center;
+            padding: 20px;
+            color: #f44336;
+            background: #ffebee;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        
+        .saved-locations {
+            margin-top: 10px;
+        }
+        
+        .saved-location-btn {
+            background-color: #e3f2fd;
+            border: 1px solid #bbdefb;
+            padding: 5px 10px;
+            margin: 2px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+        
+        .saved-location-btn:hover {
+            background-color: #bbdefb;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+        
+        .status-online {
+            background-color: #4CAF50;
+        }
+        
+        .status-offline {
+            background-color: #F44336;
+        }
+        
+        .fallback-badge {
+            background: #ff9800;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.7rem;
+            margin-left: 5px;
+        }
+        
+        .notification-toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            background: #4CAF50;
+            color: white;
+            border-radius: 5px;
+            z-index: 10000;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+        }
+        
+        .notification-toast.show {
+            transform: translateX(0);
+        }
+        
+        .notification-toast.error {
+            background: #f44336;
+        }
+        
+        .notification-toast.info {
+            background: #2196F3;
+        }
+        
+        .notification-toast.warning {
+            background: #ff9800;
+        }
+        
+        .weather-detail-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .weather-detail-card {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 4px solid #4CAF50;
+            transition: all 0.3s ease;
+        }
+        
+        .weather-detail-card.alert {
+            background: linear-gradient(135deg, #ffebee, #ffcdd2);
+            border-left: 4px solid #f44336;
+            animation: pulse 2s infinite;
+        }
+        
+        .detail-value {
+            font-size: 1.4rem;
+            font-weight: bold;
+            color: #2E7D32;
+            margin: 5px 0;
+        }
+        
+        .weather-detail-card.alert .detail-value {
+            color: #f44336;
+        }
+        
+        .detail-label {
+            font-size: 0.85rem;
+            color: #666;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .api-status {
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        
+        .status-active {
+            background: #E8F5E9;
+            color: #2E7D32;
+            border: 1px solid #C8E6C9;
+        }
+        
+        .status-inactive {
+            background: #FFEBEE;
+            color: #C62828;
+            border: 1px solid #FFCDD2;
+        }
+        
+        .auto-refresh-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 10px 0;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .refresh-toggle {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .refresh-interval {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .interval-select {
+            padding: 5px 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background: white;
+        }
+        
+        .next-refresh {
+            margin-left: auto;
+            font-size: 0.8rem;
+            color: #666;
+        }
+        
+        .user-activity-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-left: 5px;
+        }
+        
+        .user-active {
+            background-color: #4CAF50;
+        }
+        
+        .user-inactive {
+            background-color: #ff9800;
+        }
+        
+        /* New Styles for Plants Section */
+        .plants-section {
+            background-color: #F1F8E9;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .plants-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .plant-card {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s;
+        }
+        
+        .plant-card:hover {
+            transform: translateY(-2px);
+        }
+        
+        .plant-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .plant-icon {
+            font-size: 1.5rem;
+            margin-right: 10px;
+            color: #4CAF50;
+        }
+        
+        .plant-name {
+            font-weight: 600;
+            color: #2E7D32;
+        }
+        
+        .plant-details {
+            margin-top: 10px;
+        }
+        
+        .plant-detail {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+        }
+        
+        .plant-status {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+        
+        .status-planted {
+            background: #E8F5E9;
+            color: #2E7D32;
+        }
+        
+        .status-growing {
+            background: #FFF3E0;
+            color: #EF6C00;
+        }
+        
+        .status-ready {
+            background: #E3F2FD;
+            color: #1565C0;
+        }
+        
+        .status-harvest {
+            background: #FCE4EC;
+            color: #C2185B;
+        }
+        
+        .add-plant-btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            margin-top: 10px;
+            width: 100%;
+        }
+        
+        .add-plant-btn:hover {
+            background: #2E7D32;
+        }
+        
+        .plant-form {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+        }
+        
+        .form-group {
+            margin-bottom: 10px;
+        }
+        
+        .form-label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .form-submit {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            flex: 1;
+        }
+        
+        .form-cancel {
+            background: #f44336;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            flex: 1;
+        }
+        
+        /* Bot Commands Section */
+        .bot-commands {
+            background: #E3F2FD;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+        }
+        
+        .command-list {
+            margin-top: 10px;
+        }
+        
+        .command-item {
+            display: flex;
+            margin-bottom: 8px;
+            padding: 8px;
+            background: white;
+            border-radius: 5px;
+        }
+        
+        .command-name {
+            font-weight: 600;
+            width: 150px;
+            color: #1565C0;
+        }
+        
+        .command-desc {
+            flex: 1;
+        }
+        
+        .current-weather {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 15px;
+        }
+        
+        .weather-main {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .weather-icon {
+            font-size: 3rem;
+            color: #4CAF50;
+        }
+        
+        .weather-temp {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #2E7D32;
+        }
+        
+        .weather-details {
+            flex: 1;
+        }
+        
+        .weather-condition {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        
+        .weather-location {
+            color: #666;
+            margin-bottom: 10px;
+        }
+        
+        .weather-meta {
+            display: flex;
+            gap: 15px;
+            font-size: 0.9rem;
+            color: #666;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        }
+        
+        .stat-icon {
+            font-size: 1.8rem;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+        
+        .temp-stat {
+            background: #FFEBEE;
+            color: #F44336;
+        }
+        
+        .humidity-stat {
+            background: #E3F2FD;
+            color: #2196F3;
+        }
+        
+        .rain-stat {
+            background: #E8F5E9;
+            color: #4CAF50;
+        }
+        
+        .wind-stat {
+            background: #FFF3E0;
+            color: #FF9800;
+        }
+        
+        .stat-info {
+            flex: 1;
+        }
+        
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #2E7D32;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 0.9rem;
+            color: #666;
+        }
+        
+        .recommendations {
+            background: #FFF3E0;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+        
+        .recommendations h3 {
+            margin-bottom: 10px;
+            color: #FF9800;
+        }
+        
+        .recommendations ul {
+            padding-left: 20px;
+        }
+        
+        .recommendations li {
+            margin-bottom: 8px;
+            line-height: 1.4;
+        }
+        
+        .temp-day {
+            color: #F44336;
+            font-weight: bold;
+        }
+        
+        .temp-night {
+            color: #2196F3;
+            font-weight: bold;
+        }
+        
+        .day-rain {
+            margin-top: 5px;
+            font-size: 0.8rem;
+            color: #2196F3;
+        }
+        
+        .telegram-config {
+            background: #E3F2FD;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+        }
+        
+        .telegram-form {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .telegram-input {
+            padding: 8px 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 0.9rem;
+        }
+        
+        .telegram-btn {
+            background: #0088cc;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        
+        .telegram-btn:hover {
+            background: #006699;
+        }
+        
+        .telegram-status {
+            margin-top: 10px;
+            padding: 8px;
+            border-radius: 5px;
+            font-size: 0.9rem;
+        }
+        
+        .telegram-connected {
+            background: #E8F5E9;
+            color: #2E7D32;
+        }
+        
+        .telegram-disconnected {
+            background: #FFEBEE;
+            color: #F44336;
+        }
+
+        /* Modern Watering Schedule Section */
+        .watering-section {
+            background: linear-gradient(135deg, #E1F5FE 0%, #B3E5FC 100%);
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            border: 1px solid #81D4FA;
+            box-shadow: 0 4px 15px rgba(0, 150, 199, 0.1);
+        }
+
+        .watering-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .watering-icon {
+            font-size: 2rem;
+            color: #0288D1;
+            background: white;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 10px rgba(2, 136, 209, 0.2);
+        }
+
+        .watering-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #01579B;
+            margin: 0;
+        }
+
+        .watering-subtitle {
+            color: #0288D1;
+            font-size: 1rem;
+            margin-top: 5px;
+        }
+
+        .watering-controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .control-group {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+        }
+
+        .control-label {
+            display: block;
+            font-weight: 600;
+            color: #01579B;
+            margin-bottom: 10px;
+            font-size: 0.95rem;
+        }
+
+        .watering-time-input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #E1F5FE;
+            border-radius: 8px;
+            font-size: 1rem;
+            background: #F8FDFF;
+            transition: all 0.3s ease;
+        }
+
+        .watering-time-input:focus {
+            outline: none;
+            border-color: #0288D1;
+            box-shadow: 0 0 0 3px rgba(2, 136, 209, 0.1);
+        }
+
+        .watering-duration {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .duration-input {
+            width: 100px;
+            padding: 12px 15px;
+            border: 2px solid #E1F5FE;
+            border-radius: 8px;
+            font-size: 1rem;
+            background: #F8FDFF;
+            text-align: center;
+        }
+
+        .duration-unit {
+            color: #0288D1;
+            font-weight: 600;
+        }
+
+        .frequency-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .frequency-option {
+            padding: 12px 15px;
+            border: 2px solid #E1F5FE;
+            border-radius: 8px;
+            background: #F8FDFF;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .frequency-option:hover {
+            border-color: #81D4FA;
+            background: #E1F5FE;
+        }
+
+        .frequency-option.active {
+            background: #0288D1;
+            color: white;
+            border-color: #0288D1;
+            box-shadow: 0 2px 8px rgba(2, 136, 209, 0.3);
+        }
+
+        .watering-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .watering-btn {
+            padding: 14px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .watering-btn-save {
+            background: linear-gradient(135deg, #0288D1 0%, #01579B 100%);
+            color: white;
+        }
+
+        .watering-btn-save:hover {
+            background: linear-gradient(135deg, #0277BD 0%, #014377 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(2, 136, 209, 0.3);
+        }
+
+        .watering-btn-test {
+            background: linear-gradient(135deg, #00BCD4 0%, #00838F 100%);
+            color: white;
+        }
+
+        .watering-btn-test:hover {
+            background: linear-gradient(135deg, #00ACC1 0%, #006064 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 188, 212, 0.3);
+        }
+
+        .watering-status-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+            border-left: 4px solid #0288D1;
+        }
+
+        .status-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .status-icon {
+            font-size: 1.2rem;
+            color: #0288D1;
+        }
+
+        .status-title {
+            font-weight: 600;
+            color: #01579B;
+            font-size: 1.1rem;
+        }
+
+        .status-details {
+            color: #546E7A;
+            line-height: 1.5;
+        }
+
+        .next-watering {
+            margin-top: 10px;
+            padding: 10px;
+            background: #E1F5FE;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            color: #01579B;
+            font-weight: 500;
+        }
+
+        /* Loading overlay styles */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            color: white;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #4CAF50;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            font-size: 1.2rem;
+            text-align: center;
+        }
+        
+        @media (max-width: 768px) {
+            .weather-stats {
+                grid-template-columns: 1fr;
+            }
+            
+            .coordinates {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .location-controls {
+                grid-template-columns: 1fr;
+            }
+            
+            .map-controls {
+                flex-direction: column;
+            }
+            
+            .schedule-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .btn-group {
+                grid-template-columns: 1fr;
+            }
+            
+            .forecast-day {
+                min-width: 100px;
+                padding: 10px 8px;
+            }
+            
+            .day-icon {
+                font-size: 1.5rem;
+            }
+            
+            .auto-refresh-controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .next-refresh {
+                margin-left: 0;
+                text-align: center;
+            }
+            
+            .plants-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .command-item {
+                flex-direction: column;
+            }
+            
+            .command-name {
+                width: 100%;
+                margin-bottom: 5px;
+            }
+            
+            .current-weather {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .weather-main {
+                justify-content: center;
+            }
+            
+            .weather-meta {
+                justify-content: center;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .forecast-7day {
+                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            }
+            
+            .forecast-tab {
+                padding: 8px 12px;
+                font-size: 0.9rem;
+            }
+            
+            .telegram-form {
+                grid-template-columns: 1fr;
+            }
+
+            .watering-controls-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .watering-actions {
+                grid-template-columns: 1fr;
+            }
+
+            .frequency-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .forecast-7day {
+                grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            }
+            
+            .forecast-tab {
+                padding: 6px 8px;
+                font-size: 0.8rem;
+            }
+
+            .watering-header {
+                flex-direction: column;
+                text-align: center;
+                gap: 10px;
+            }
+
+            .frequency-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+        <div class="loading-text" id="loadingText">Mengakses lokasi Anda...</div>
+    </div>
+
+    <div class="container">
+        <header>
+            <div class="app-title">
+                <i class="fas fa-tractor"></i>
+                <h1>CuacaTani</h1>
+                <span id="statusIndicator" class="status-indicator status-online" title="Aplikasi Online"></span>
+            </div>
+            <div class="date-time" id="currentDateTime">Memuat waktu...</div>
+            <div class="auto-refresh-status" id="autoRefreshStatus">
+                <i class="fas fa-sync-alt"></i> Auto-Refresh: <span id="refreshStatusText">Aktif</span>
+                <span id="userActivityIndicator" class="user-activity-indicator user-active" title="Pengguna Aktif"></span>
+            </div>
+        </header>
+        
+        <div class="section">
+            <h2 class="section-title"><i class="fas fa-map-marker-alt"></i> Cuaca Saat Ini</h2>
+            
+            <!-- Kontrol Auto-Refresh -->
+            <div class="auto-refresh-controls">
+                <div class="refresh-toggle">
+                    <input type="checkbox" id="autoRefreshToggle" checked>
+                    <label for="autoRefreshToggle">Auto-Refresh</label>
+                </div>
+                <div class="refresh-interval">
+                    <span>Interval:</span>
+                    <select id="refreshInterval" class="interval-select">
+                        <option value="5">5 menit</option>
+                        <option value="10">10 menit</option>
+                        <option value="15" selected>15 menit</option>
+                        <option value="30">30 menit</option>
+                        <option value="60">60 menit</option>
+                    </select>
+                </div>
+                <div class="next-refresh">
+                    <i class="fas fa-clock"></i> Refresh berikutnya: <span id="nextRefreshTime">-</span>
+                </div>
+            </div>
+            
+            <div class="location-controls">
+                <input type="text" class="location-input" id="locationInput" placeholder="Cari lokasi (contoh: Jakarta, Bandung, Surabaya)">
+                <button class="location-btn" id="searchLocation">
+                    <i class="fas fa-search"></i> Cari
+                </button>
+            </div>
+            
+            <div class="map-controls">
+                <button class="map-btn" id="locateMe">
+                    <i class="fas fa-location-arrow"></i> Lokasi Saya
+                </button>
+                <button class="map-btn" id="refreshWeather">
+                    <i class="fas fa-sync-alt"></i> Refresh Sekarang
+                </button>
+                <button class="map-btn" id="debugForecast" style="background: #FF9800;">
+                    <i class="fas fa-bug"></i> Debug Data
+                </button>
+            </div>
+            
+            <div class="saved-locations">
+                <small>Lokasi cepat: </small>
+                <button class="saved-location-btn" data-location="Jakarta">Jakarta</button>
+                <button class="saved-location-btn" data-location="Bandung">Bandung</button>
+                <button class="saved-location-btn" data-location="Surabaya">Surabaya</button>
+                <button class="saved-location-btn" data-location="Yogyakarta">Yogyakarta</button>
+                <button class="saved-location-btn" data-location="Bali">Bali</button>
+            </div>
+            
+            <div class="map-container">
+                <div id="map"></div>
+            </div>
+            
+            <div class="location-info">
+                <div class="coordinates">
+                    <div class="coord-item">
+                        <div class="coord-label">Lintang</div>
+                        <div class="coord-value" id="latitude">-7.250445</div>
+                    </div>
+                    <div class="coord-item">
+                        <div class="coord-label">Bujur</div>
+                        <div class="coord-value" id="longitude">112.768845</div>
+                    </div>
+                    <div class="coord-item">
+                        <div class="coord-label">Lokasi</div>
+                        <div class="coord-value" id="locationName">Surabaya</div>
+                    </div>
+                </div>
+                
+                <div class="weather-info">
+                    <div id="currentWeather">Memuat data cuaca...</div>
+                    
+                    <!-- Detail Cuaca Lengkap -->
+                    <div class="weather-detail-grid" id="weatherDetails" style="display: none;">
+                        <div class="weather-detail-card" id="windCard">
+                            <div class="detail-label">
+                                <i class="fas fa-wind"></i> Kecepatan Angin
+                            </div>
+                            <div class="detail-value" id="detailWindSpeed">- m/s</div>
+                            <div class="detail-label" id="windDirection">Arah: -</div>
+                        </div>
+                        
+                        <div class="weather-detail-card" id="rainCard">
+                            <div class="detail-label">
+                                <i class="fas fa-cloud-rain"></i> Curah Hujan
+                            </div>
+                            <div class="detail-value" id="detailRainfall">- mm</div>
+                            <div class="detail-label">1 jam terakhir</div>
+                        </div>
+                        
+                        <div class="weather-detail-card" id="humidityCard">
+                            <div class="detail-label">
+                                <i class="fas fa-tint"></i> Kelembaban
+                            </div>
+                            <div class="detail-value" id="detailHumidity">- %</div>
+                            <div class="detail-label">Relatif</div>
+                        </div>
+                        
+                        <div class="weather-detail-card" id="pressureCard">
+                            <div class="detail-label">
+                                <i class="fas fa-tachometer-alt"></i> Tekanan Udara
+                            </div>
+                            <div class="detail-value" id="detailPressure">- hPa</div>
+                            <div class="detail-label">Permukaan laut</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <hr>
+        
+        <div class="section">
+            <div class="weather-stats" id="weatherStats">
+                <!-- Stats akan diisi secara dinamis -->
+            </div>
+            
+            <h2 class="section-title"><i class="fas fa-cloud-sun"></i> Ramalan Cuaca</h2>
+            
+            <!-- Tab untuk memilih antara 5 hari dan 7 hari -->
+            <div class="forecast-tabs">
+                <div class="forecast-tab active" data-tab="5day">5 Hari</div>
+                <div class="forecast-tab" data-tab="7day">7 Hari</div>
+            </div>
+            
+            <!-- Container untuk ramalan 5 hari -->
+            <div class="forecast-content active" id="forecast5day">
+                <div class="forecast-container" id="forecastContainer">
+                    <div class="loading-forecast">
+                        <i class="fas fa-spinner fa-spin"></i><br>
+                        Memuat ramalan cuaca 5 hari...
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Container untuk ramalan 7 hari -->
+            <div class="forecast-content" id="forecast7day">
+                <div class="forecast-7day" id="forecast7dayContainer">
+                    <div class="loading-forecast">
+                        <i class="fas fa-spinner fa-spin"></i><br>
+                        Memuat ramalan cuaca 7 hari...
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- SECTION: Tanaman dan Panen -->
+        <div class="section">
+            <div class="plants-section">
+                <h2 class="section-title"><i class="fas fa-seedling"></i> Manajemen Tanaman & Panen</h2>
+                <p>Kelola tanaman Anda dan dapatkan notifikasi saat waktu panen tiba.</p>
+                
+                <div class="plants-grid" id="plantsGrid">
+                    <!-- Daftar tanaman akan diisi oleh JavaScript -->
+                </div>
+                
+                <button class="add-plant-btn" id="addPlantBtn">
+                    <i class="fas fa-plus"></i> Tambah Tanaman Baru
+                </button>
+                
+                <div class="plant-form" id="plantForm" style="display: none;">
+                    <h3>Tambah Tanaman Baru</h3>
+                    <div class="form-group">
+                        <label class="form-label">Jenis Tanaman</label>
+                        <select class="form-input" id="plantType">
+                            <option value="padi">Padi</option>
+                            <option value="jagung">Jagung</option>
+                            <option value="kedelai">Kedelai</option>
+                            <option value="cabe">Cabe</option>
+                            <option value="tomat">Tomat</option>
+                            <option value="kentang">Kentang</option>
+                            <option value="bawang">Bawang Merah/Putih</option>
+                            <option value="lainnya">Lainnya</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Nama Tanaman</label>
+                        <input type="text" class="form-input" id="plantName" placeholder="Contoh: Padi Sawah Varietas IR64">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Tanggal Tanam</label>
+                        <input type="date" class="form-input" id="plantDate">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Estimasi Panen (hari)</label>
+                        <input type="number" class="form-input" id="harvestDays" placeholder="Contoh: 90">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Luas Lahan (hektar)</label>
+                        <input type="number" class="form-input" id="landArea" placeholder="Contoh: 1.5" step="0.1">
+                    </div>
+                    <div class="form-actions">
+                        <button class="form-submit" id="submitPlant">Simpan</button>
+                        <button class="form-cancel" id="cancelPlant">Batal</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION: Jadwal Penyiraman Modern -->
+        <div class="section">
+            <div class="watering-section">
+                <div class="watering-header">
+                    <div class="watering-icon">
+                        <i class="fas fa-tint"></i>
+                    </div>
+                    <div>
+                        <h2 class="watering-title">Jadwal Penyiraman Otomatis</h2>
+                        <p class="watering-subtitle">Atur jadwal penyiraman tanaman dan dapatkan notifikasi otomatis</p>
+                    </div>
+                </div>
+
+                <div class="watering-controls-grid">
+                    <div class="control-group">
+                        <label class="control-label">
+                            <i class="fas fa-clock"></i> Waktu Penyiraman
+                        </label>
+                        <input type="time" class="watering-time-input" id="wateringTime" value="06:00">
+                    </div>
+
+                    <div class="control-group">
+                        <label class="control-label">
+                            <i class="fas fa-hourglass-half"></i> Durasi Penyiraman
+                        </label>
+                        <div class="watering-duration">
+                            <input type="number" class="duration-input" id="wateringDuration" value="30" min="5" max="120">
+                            <span class="duration-unit">menit</span>
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <label class="control-label">
+                            <i class="fas fa-calendar-alt"></i> Frekuensi Penyiraman
+                        </label>
+                        <div class="frequency-grid">
+                            <div class="frequency-option active" data-frequency="daily">
+                                Setiap Hari
+                            </div>
+                            <div class="frequency-option" data-frequency="2days">
+                                2 Hari Sekali
+                            </div>
+                            <div class="frequency-option" data-frequency="3days">
+                                3 Hari Sekali
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="watering-actions">
+                    <button class="watering-btn watering-btn-save" onclick="saveWateringSchedule()">
+                        <i class="fas fa-save"></i> Simpan Jadwal
+                    </button>
+                    <button class="watering-btn watering-btn-test" onclick="testWateringNotification()">
+                        <i class="fas fa-bell"></i> Tes Notifikasi
+                    </button>
+                </div>
+
+                <div class="watering-status-card">
+                    <div class="status-header">
+                        <i class="fas fa-info-circle status-icon"></i>
+                        <div class="status-title">Status Jadwal Saat Ini</div>
+                    </div>
+                    <div class="status-details" id="wateringStatus">
+                        Menunggu konfigurasi jadwal penyiraman...
+                    </div>
+                    <div class="next-watering" id="nextWateringInfo">
+                        <i class="fas fa-clock"></i> Penyiraman berikutnya: Menunggu konfigurasi
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <div class="schedule-section">
+                <h2 class="section-title"><i class="fas fa-bell"></i> Notifikasi Otomatis</h2>
+                <p>Dapatkan notifikasi otomatis sesuai kondisi cuaca.</p>
+                
+                <!-- Konfigurasi Telegram -->
+                <div class="telegram-config">
+                    <h3><i class="fab fa-telegram"></i> Status Bot Telegram</h3>
+                    <div id="telegramStatus" class="telegram-status telegram-connected">
+                        <i class="fas fa-check-circle"></i> Bot Telegram sudah terkonfigurasi dan siap mengirim notifikasi!
+                    </div>
+                    <div class="btn-group" style="margin-top: 15px;">
+                        <button class="test-btn" onclick="testTelegramConnection()">
+                            <i class="fas fa-paper-plane"></i> Tes Kirim Pesan
+                        </button>
+                        <button class="test-btn" onclick="sendDailyWeather()" style="background: #4CAF50;">
+                            <i class="fas fa-cloud-sun"></i> Kirim Laporan Cuaca
+                        </button>
+                    </div>
+                    
+                    <!-- Tombol Tes Peringatan Cuaca dan Tes Notifikasi Panen -->
+                    <div class="btn-group" style="margin-top: 15px;">
+                        <button class="test-btn" onclick="testWeatherAlerts()">
+                            <i class="fas fa-exclamation-triangle"></i> Tes Peringatan Cuaca
+                        </button>
+                        <button class="test-btn" onclick="sendTestHarvestNotification()" style="background: #FF9800;">
+                            <i class="fas fa-seedling"></i> Tes Notifikasi Panen
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <footer>
+            <p>CuacaTani Auto-Refresh | © OpenStreetMap contributors | <span id="lastUpdate">Terakhir update: -</span></p>
+        </footer>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // ==============================
+        // KONFIGURASI APLIKASI
+        // ==============================
+        const CONFIG = {
+            AUTO_REFRESH_INTERVAL: 15 * 60 * 1000,
+            NOMINATIM_API_URL: 'https://nominatim.openstreetmap.org/search',
+            TELEGRAM_API_URL: 'https://api.telegram.org/bot'
+        };
+
+        // ==============================
+        // VARIABEL GLOBAL
+        // ==============================
+        let map, userMarker;
+        let userLocation = { 
+            lat: -7.250445, 
+            lng: 112.768845, 
+            name: "Surabaya" 
+        };
+        let schedules = {};
+        let currentWeatherData = null;
+        let autoRefreshTimer = null;
+        let isAutoRefreshEnabled = true;
+        let lastUserActivity = Date.now();
+        let isUserActive = true;
+        let plants = [];
+        let isLocating = false;
+        let backgroundNotificationTimer = null;
+        let wateringSchedule = {
+            time: "06:00",
+            duration: 30,
+            frequency: "daily",
+            enabled: true,
+            nextWatering: null
+        };
+
+        // ==============================
+        // KONFIGURASI TELEGRAM - SUDAH DIHARDCODE
+        // ==============================
+        const telegramConfig = {
+            botToken: '8209053292:AAE2Xh6bftjzZjWz0YO-69aKqOmVBHzJtrk',
+            chatId: '5698906519',
+            isConnected: true
+        };
+
+        // ==============================
+        // DATABASE LOKASI INDONESIA YANG LEBIH LUAS
+        // ==============================
+        const locationDatabase = {
+            // Kota Besar
+            'Jakarta': { lat: -6.2088, lng: 106.8456 },
+            'Bandung': { lat: -6.9175, lng: 107.6191 },
+            'Surabaya': { lat: -7.2504, lng: 112.7688 },
+            'Yogyakarta': { lat: -7.7956, lng: 110.3695 },
+            'Bali': { lat: -8.4095, lng: 115.1889 },
+            'Medan': { lat: 3.5952, lng: 98.6722 },
+            'Semarang': { lat: -6.9667, lng: 110.4167 },
+            'Makassar': { lat: -5.1477, lng: 119.4327 },
+            'Palembang': { lat: -2.9761, lng: 104.7759 },
+            'Denpasar': { lat: -8.6500, lng: 115.2167 },
+            
+            // Kota Sedang
+            'Malang': { lat: -7.9666, lng: 112.6326 },
+            'Solo': { lat: -7.5755, lng: 110.8243 },
+            'Bogor': { lat: -6.5971, lng: 106.8060 },
+            'Cirebon': { lat: -6.7320, lng: 108.5523 },
+            'Tangerang': { lat: -6.1783, lng: 106.6319 },
+            'Depok': { lat: -6.4025, lng: 106.7942 },
+            'Bekasi': { lat: -6.2383, lng: 106.9756 },
+            'Padang': { lat: -0.9471, lng: 100.4172 },
+            'Pekanbaru': { lat: 0.5071, lng: 101.4478 },
+            'Balikpapan': { lat: -1.2379, lng: 116.8529 },
+            
+            // Kabupaten di Jawa Timur
+            'Jombang': { lat: -7.5468, lng: 112.2265 },
+            'Mojokerto': { lat: -7.4706, lng: 112.4401 },
+            'Pasuruan': { lat: -7.6453, lng: 112.9075 },
+            'Probolinggo': { lat: -7.7543, lng: 113.2159 },
+            'Lumajang': { lat: -8.1335, lng: 113.2246 },
+            'Banyuwangi': { lat: -8.2191, lng: 114.3691 },
+            'Bondowoso': { lat: -7.9135, lng: 113.8211 },
+            'Situbondo': { lat: -7.7062, lng: 114.0095 },
+            'Tulungagung': { lat: -8.0645, lng: 111.9025 },
+            'Trenggalek': { lat: -8.0500, lng: 111.7167 },
+            'Ponorogo': { lat: -7.8748, lng: 111.4624 },
+            'Pacitan': { lat: -8.2064, lng: 111.0917 },
+            'Ngawi': { lat: -7.4040, lng: 111.4462 },
+            'Magetan': { lat: -7.6494, lng: 111.3381 },
+            'Madiun': { lat: -7.6298, lng: 111.5239 },
+            'Nganjuk': { lat: -7.6051, lng: 111.9035 },
+            'Kediri': { lat: -7.8467, lng: 112.0178 },
+            'Blitar': { lat: -8.0981, lng: 112.1683 },
+            'Tuban': { lat: -6.8976, lng: 112.0649 },
+            'Lamongan': { lat: -7.1168, lng: 112.4165 },
+            'Gresik': { lat: -7.1550, lng: 112.6517 },
+            'Sidoarjo': { lat: -7.4478, lng: 112.7183 },
+            'Mojosari': { lat: -7.5200, lng: 112.5500 }
+        };
+
+        // ==============================
+        // FUNGSI UTILITAS
+        // ==============================
+        
+        function showNotification(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `notification-toast ${type}`;
+            toast.innerHTML = `
+                <i class="fas fa-${type === 'success' ? 'check' : type === 'error' ? 'exclamation-triangle' : type === 'warning' ? 'exclamation' : 'info'}"></i>
+                ${message}
+            `;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => toast.classList.add('show'), 100);
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => document.body.removeChild(toast), 300);
+            }, 4000);
+        }
+
+        function updateDateTime() {
+            const now = new Date();
+            const options = { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            };
+            const dateString = now.toLocaleDateString('id-ID', options);
+            const timeString = now.toLocaleTimeString('id-ID');
+            document.getElementById('currentDateTime').innerHTML = `${dateString}<br>${timeString}`;
+        }
+
+        function getWindDirection(degrees) {
+            const directions = ['Utara', 'Timur Laut', 'Timur', 'Tenggara', 'Selatan', 'Barat Daya', 'Barat', 'Barat Laut'];
+            const index = Math.round(degrees / 45) % 8;
+            return directions[index];
+        }
+
+        function formatTimeFromNow(minutes) {
+            const now = new Date();
+            const target = new Date(now.getTime() + minutes * 60000);
+            return target.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        // ==============================
+        // FUNGSI TELEGRAM BOT - SUDAH TERKONFIGURASI
+        // ==============================
+
+        // Fungsi untuk mengirim pesan ke Telegram
+        async function sendTelegramMessage(message, parseMode = 'HTML') {
+            try {
+                const url = `${CONFIG.TELEGRAM_API_URL}${telegramConfig.botToken}/sendMessage`;
+                
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        chat_id: telegramConfig.chatId,
+                        text: message,
+                        parse_mode: parseMode
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.ok) {
+                    console.log('Pesan berhasil dikirim ke Telegram');
+                    return { success: true, data: data };
+                } else {
+                    console.error('Error mengirim pesan ke Telegram:', data);
+                    return { success: false, error: data.description };
+                }
+            } catch (error) {
+                console.error('Error mengirim pesan ke Telegram:', error);
+                return { success: false, error: error.message };
+            }
+        }
+
+        // ==============================
+        // SISTEM LOKASI OTOMATIS SAAT PERTAMA KALI
+        // ==============================
+
+        // Fungsi untuk meminta akses lokasi otomatis saat pertama kali
+        function requestLocationOnStart() {
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            const loadingText = document.getElementById('loadingText');
+            
+            if (!navigator.geolocation) {
+                loadingText.textContent = 'Browser tidak mendukung geolocation';
+                setTimeout(() => {
+                    loadingOverlay.style.display = 'none';
+                    showNotification('Browser tidak mendukung akses lokasi', 'error');
+                }, 2000);
+                return;
+            }
+
+            loadingText.textContent = 'Mengakses lokasi Anda...';
+            
+            navigator.geolocation.getCurrentPosition(
+                // Success callback
+                async function(position) {
+                    try {
+                        loadingText.textContent = 'Mendapatkan informasi lokasi...';
+                        
+                        userLocation.lat = position.coords.latitude;
+                        userLocation.lng = position.coords.longitude;
+                        
+                        // Dapatkan nama lokasi dari koordinat
+                        const locationInfo = await reverseGeocode(userLocation.lat, userLocation.lng);
+                        userLocation.name = locationInfo.name;
+                        
+                        // Update peta dan tampilan
+                        if (map) {
+                            map.setView([userLocation.lat, userLocation.lng], 13);
+                            if (userMarker) {
+                                userMarker.setLatLng([userLocation.lat, userLocation.lng]);
+                            }
+                            updateLocationDisplay();
+                        }
+                        
+                        loadingText.textContent = 'Memuat data cuaca...';
+                        await updateWeatherData();
+                        
+                        // Sembunyikan loading overlay
+                        setTimeout(() => {
+                            loadingOverlay.style.display = 'none';
+                            showNotification(`Lokasi Anda: ${userLocation.name}`, 'success');
+                        }, 1000);
+                        
+                    } catch (error) {
+                        console.error('Error processing location:', error);
+                        loadingOverlay.style.display = 'none';
+                        showNotification('Error memproses lokasi', 'error');
+                    }
+                },
+                // Error callback
+                function(error) {
+                    let errorMessage = 'Tidak dapat mengakses lokasi Anda';
+                    
+                    switch(error.code) {
+                        case error.PERMISSION_DENIED:
+                            errorMessage = 'Akses lokasi ditolak. Menggunakan lokasi default Surabaya.';
+                            userLocation = { lat: -7.250445, lng: 112.768845, name: "Surabaya" };
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            errorMessage = 'Informasi lokasi tidak tersedia. Menggunakan lokasi default Surabaya.';
+                            userLocation = { lat: -7.250445, lng: 112.768845, name: "Surabaya" };
+                            break;
+                        case error.TIMEOUT:
+                            errorMessage = 'Permintaan lokasi timeout. Menggunakan lokasi default Surabaya.';
+                            userLocation = { lat: -7.250445, lng: 112.768845, name: "Surabaya" };
+                            break;
+                        default:
+                            errorMessage = 'Error tidak diketahui terjadi. Menggunakan lokasi default Surabaya.';
+                            userLocation = { lat: -7.250445, lng: 112.768845, name: "Surabaya" };
+                            break;
+                    }
+                    
+                    loadingText.textContent = errorMessage;
+                    
+                    setTimeout(() => {
+                        loadingOverlay.style.display = 'none';
+                        showNotification(errorMessage, 'warning');
+                        updateWeatherData();
+                    }, 3000);
+                    
+                    console.error('Geolocation error:', error);
+                },
+                // Options
+                {
+                    enableHighAccuracy: true,
+                    timeout: 15000,
+                    maximumAge: 60000
+                }
+            );
+        }
+
+        // ==============================
+        // FUNGSI LOKASI SAYA YANG DIPERBAIKI
+        // ==============================
+
+        function locateUser() {
+            if (isLocating) {
+                showNotification('Sedang mencari lokasi...', 'info');
+                return;
+            }
+
+            if (!navigator.geolocation) {
+                showNotification('Browser tidak mendukung geolocation', 'error');
+                return;
+            }
+
+            isLocating = true;
+            const locateBtn = document.getElementById('locateMe');
+            const originalText = locateBtn.innerHTML;
+            locateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mencari...';
+
+            showNotification('Mencari lokasi Anda...', 'info');
+
+            navigator.geolocation.getCurrentPosition(
+                // Success callback
+                async function(position) {
+                    try {
+                        userLocation.lat = position.coords.latitude;
+                        userLocation.lng = position.coords.longitude;
+                        
+                        // Dapatkan nama lokasi dari koordinat
+                        const locationInfo = await reverseGeocode(userLocation.lat, userLocation.lng);
+                        userLocation.name = locationInfo.name;
+                        
+                        // Update peta dan tampilan
+                        map.setView([userLocation.lat, userLocation.lng], 13);
+                        userMarker.setLatLng([userLocation.lat, userLocation.lng]);
+                        updateLocationDisplay();
+                        updateWeatherData();
+                        
+                        showNotification(`Lokasi Anda: ${userLocation.name}`, 'success');
+                    } catch (error) {
+                        console.error('Error processing location:', error);
+                        showNotification('Error memproses lokasi', 'error');
+                    } finally {
+                        isLocating = false;
+                        locateBtn.innerHTML = originalText;
+                    }
+                },
+                // Error callback
+                function(error) {
+                    isLocating = false;
+                    locateBtn.innerHTML = '<i class="fas fa-location-arrow"></i> Lokasi Saya';
+                    
+                    let errorMessage = 'Tidak dapat mengakses lokasi Anda';
+                    
+                    switch(error.code) {
+                        case error.PERMISSION_DENIED:
+                            errorMessage = 'Akses lokasi ditolak. Izinkan akses lokasi di browser Anda.';
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            errorMessage = 'Informasi lokasi tidak tersedia.';
+                            break;
+                        case error.TIMEOUT:
+                            errorMessage = 'Permintaan lokasi timeout.';
+                            break;
+                        default:
+                            errorMessage = 'Error tidak diketahui terjadi.';
+                            break;
+                    }
+                    
+                    showNotification(errorMessage, 'error');
+                    console.error('Geolocation error:', error);
+                },
+                // Options
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 60000
+                }
+            );
+        }
+
+        // ==============================
+        // SISTEM PENCARIAN LOKASI
+        // ==============================
+
+        async function searchLocation(locationName) {
+            try {
+                showNotification('Mencari lokasi...', 'info');
+                
+                const results = await searchLocationWithAPI(locationName);
+                
+                if (results.length > 0) {
+                    // Pilih hasil pertama (yang paling relevan)
+                    const location = results[0];
+                    userLocation.lat = location.lat;
+                    userLocation.lng = location.lon;
+                    userLocation.name = getLocationDisplayName(location);
+                    
+                    map.setView([userLocation.lat, userLocation.lng], 13);
+                    userMarker.setLatLng([userLocation.lat, userLocation.lng]);
+                    updateLocationDisplay();
+                    updateWeatherData();
+                    
+                    showNotification(`Lokasi ditemukan: ${userLocation.name}`, 'success');
+                } else {
+                    throw new Error('Lokasi tidak ditemukan');
+                }
+            } catch (error) {
+                console.error('Error searching location:', error);
+                showNotification('Lokasi tidak ditemukan. Coba nama kota/kabupaten lain.', 'error');
+            }
+        }
+
+        function getLocationDisplayName(locationData) {
+            if (locationData.address) {
+                const addr = locationData.address;
+                if (addr.city) return addr.city;
+                if (addr.town) return addr.town;
+                if (addr.village) return addr.village;
+                if (addr.municipality) return addr.municipality;
+                if (addr.county) return addr.county;
+            }
+            
+            // Fallback: ambil bagian pertama dari display_name
+            return locationData.name.split(',')[0];
+        }
+
+        // ==============================
+        // FUNGSI PETA DAN LOKASI
+        // ==============================
+
+        function initMap() {
+            map = L.map('map').setView([userLocation.lat, userLocation.lng], 13);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors',
+                maxZoom: 18
+            }).addTo(map);
+            
+            userMarker = L.marker([userLocation.lat, userLocation.lng])
+                .addTo(map)
+                .bindPopup('Lokasi: ' + userLocation.name)
+                .openPopup();
+            
+            // Event ketika peta diklik
+            map.on('click', async function(e) {
+                userLocation.lat = e.latlng.lat;
+                userLocation.lng = e.latlng.lng;
+                
+                // Dapatkan nama lokasi dari koordinat
+                const locationInfo = await reverseGeocode(userLocation.lat, userLocation.lng);
+                userLocation.name = locationInfo.name;
+                
+                userMarker.setLatLng(e.latlng);
+                updateLocationDisplay();
+                updateWeatherData();
+                
+                showNotification(`Lokasi dipilih: ${userLocation.name}`, 'success');
+            });
+        }
+
+        function updateLocationDisplay() {
+            document.getElementById('latitude').textContent = userLocation.lat.toFixed(6);
+            document.getElementById('longitude').textContent = userLocation.lng.toFixed(6);
+            document.getElementById('locationName').textContent = userLocation.name;
+            
+            userMarker.setPopupContent('Lokasi: ' + userLocation.name);
+            userMarker.openPopup();
+        }
+
+        // ==============================
+        // SISTEM CUACA YANG DIPERBAIKI
+        // ==============================
+
+        async function updateWeatherData() {
+            try {
+                showNotification('Memperbarui data cuaca...', 'info');
+                
+                // Simulasi data cuaca dengan variasi berdasarkan lokasi
+                const weatherData = await generateWeatherData(userLocation.lat, userLocation.lng);
+                currentWeatherData = weatherData;
+                
+                displayCurrentWeather(weatherData);
+                displayWeatherStats(weatherData);
+                displayForecast(weatherData.forecast);
+                display7DayForecast(weatherData.forecast7day);
+                
+                // Update detail cuaca
+                document.getElementById('detailWindSpeed').textContent = `${weatherData.wind.speed} m/s`;
+                document.getElementById('windDirection').textContent = `Arah: ${getWindDirection(weatherData.wind.direction)}`;
+                document.getElementById('detailRainfall').textContent = `${weatherData.rainfall} mm`;
+                document.getElementById('detailHumidity').textContent = `${weatherData.humidity}%`;
+                document.getElementById('detailPressure').textContent = `${weatherData.pressure} hPa`;
+                
+                // Tampilkan detail cuaca
+                document.getElementById('weatherDetails').style.display = 'grid';
+                
+                // Update waktu terakhir refresh
+                const now = new Date();
+                document.getElementById('lastUpdate').textContent = `Terakhir update: ${now.toLocaleTimeString('id-ID')}`;
+                
+                showNotification('Data cuaca berhasil diperbarui', 'success');
+            } catch (error) {
+                console.error('Error updating weather data:', error);
+                showNotification('Gagal memperbarui data cuaca', 'error');
+            }
+        }
+
+        // Fungsi untuk menghasilkan data cuaca yang realistis
+        async function generateWeatherData(lat, lng) {
+            // Simulasi variasi cuaca berdasarkan koordinat dan waktu
+            const time = new Date();
+            const hour = time.getHours();
+            const dayOfYear = Math.floor((time - new Date(time.getFullYear(), 0, 0)) / 1000 / 60 / 60 / 24);
+            
+            // Faktor musiman untuk Indonesia (musim hujan dan kemarau)
+            const isRainySeason = (lat < 0) ? 
+                (dayOfYear >= 300 || dayOfYear <= 60) : // Musim hujan di selatan: Okt-Mar
+                (dayOfYear >= 120 && dayOfYear <= 240); // Musim hujan di utara: Apr-Agu
+            
+            // Base temperature berdasarkan latitude dan waktu
+            const baseTemp = 28 + (Math.sin(dayOfYear / 58) * 3) - (Math.abs(lat) / 10);
+            
+            // Variasi suhu harian
+            const dailyVariation = Math.sin((hour - 6) * Math.PI / 12) * 5;
+            const temperature = Math.round(baseTemp + dailyVariation);
+            
+            // Kelembaban berdasarkan musim
+            const baseHumidity = isRainySeason ? 80 : 65;
+            const humidity = Math.min(95, Math.max(40, baseHumidity + (Math.random() * 20 - 10)));
+            
+            // Probabilitas hujan berdasarkan musim
+            const rainProbability = isRainySeason ? 0.6 : 0.2;
+            const isRaining = Math.random() < rainProbability;
+            
+            // Data cuaca saat ini
+            const weatherData = {
+                temperature: temperature,
+                condition: isRaining ? 'Hujan' : (hour < 6 || hour > 18) ? 'Cerah' : 
+                          (temperature > 32) ? 'Cerah' : (humidity > 85) ? 'Berawan' : 'Cerah Sebagian',
+                humidity: Math.round(humidity),
+                wind: {
+                    speed: Math.round((Math.random() * 5 + 1) * 10) / 10,
+                    direction: Math.floor(Math.random() * 360)
+                },
+                rainfall: isRaining ? Math.round((Math.random() * 10 + 1) * 10) / 10 : 0,
+                pressure: Math.round(1013 + (Math.random() * 10 - 5)),
+                location: userLocation.name,
+                timestamp: new Date()
+            };
+            
+            // Generate forecast untuk 5 hari
+            weatherData.forecast = [];
+            for (let i = 1; i <= 5; i++) {
+                const forecastDate = new Date();
+                forecastDate.setDate(forecastDate.getDate() + i);
+                
+                const dayTemp = baseTemp + (Math.random() * 4 - 2);
+                const nightTemp = dayTemp - (Math.random() * 3 + 5);
+                const willRain = Math.random() < (isRainySeason ? 0.7 : 0.3);
+                
+                weatherData.forecast.push({
+                    date: forecastDate,
+                    day: forecastDate.toLocaleDateString('id-ID', { weekday: 'short' }),
+                    condition: willRain ? 'Hujan' : (Math.random() > 0.7 ? 'Berawan' : 'Cerah'),
+                    temp: {
+                        day: Math.round(dayTemp),
+                        night: Math.round(nightTemp)
+                    },
+                    rainProbability: Math.round((willRain ? Math.random() * 30 + 50 : Math.random() * 30) * 10) / 10
+                });
+            }
+            
+            // Generate forecast untuk 7 hari
+            weatherData.forecast7day = [];
+            for (let i = 0; i < 7; i++) {
+                const forecastDate = new Date();
+                forecastDate.setDate(forecastDate.getDate() + i);
+                
+                const dayTemp = baseTemp + (Math.random() * 4 - 2);
+                const nightTemp = dayTemp - (Math.random() * 3 + 5);
+                const willRain = Math.random() < (isRainySeason ? 0.7 : 0.3);
+                
+                weatherData.forecast7day.push({
+                    date: forecastDate,
+                    day: forecastDate.toLocaleDateString('id-ID', { weekday: 'short' }),
+                    dateNum: forecastDate.getDate(),
+                    month: forecastDate.toLocaleDateString('id-ID', { month: 'short' }),
+                    condition: willRain ? 'Hujan' : (Math.random() > 0.7 ? 'Berawan' : 'Cerah'),
+                    temp: {
+                        day: Math.round(dayTemp),
+                        night: Math.round(nightTemp)
+                    },
+                    rainProbability: Math.round((willRain ? Math.random() * 30 + 50 : Math.random() * 30) * 10) / 10,
+                    humidity: Math.round(baseHumidity + (Math.random() * 20 - 10)),
+                    windSpeed: Math.round((Math.random() * 5 + 1) * 10) / 10
+                });
+            }
+            
+            return weatherData;
+        }
+
+        function displayCurrentWeather(data) {
+            const weatherIcon = getWeatherIcon(data.condition);
+            const weatherElement = document.getElementById('currentWeather');
+            
+            weatherElement.innerHTML = `
+                <div class="current-weather">
+                    <div class="weather-main">
+                        <div class="weather-icon">${weatherIcon}</div>
+                        <div class="weather-temp">${data.temperature}°C</div>
+                    </div>
+                    <div class="weather-details">
+                        <div class="weather-condition">${data.condition}</div>
+                        <div class="weather-location">${data.location}</div>
+                        <div class="weather-meta">
+                            <span><i class="fas fa-tint"></i> ${data.humidity}%</span>
+                            <span><i class="fas fa-wind"></i> ${data.wind.speed} m/s</span>
+                            <span><i class="fas fa-cloud-rain"></i> ${data.rainfall} mm</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function getWeatherIcon(condition) {
+            const icons = {
+                'Cerah': 'fa-sun',
+                'Cerah Sebagian': 'fa-cloud-sun',
+                'Berawan': 'fa-cloud',
+                'Hujan': 'fa-cloud-rain',
+                'Hujan Lebat': 'fa-cloud-showers-heavy',
+                'Petir': 'fa-bolt',
+                'Kabut': 'fa-smog'
+            };
+            
+            const iconClass = icons[condition] || 'fa-cloud';
+            return `<i class="fas ${iconClass}"></i>`;
+        }
+
+        function displayWeatherStats(data) {
+            const statsElement = document.getElementById('weatherStats');
+            const recommendations = getWeatherRecommendations(data);
+            
+            statsElement.innerHTML = `
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon temp-stat">
+                            <i class="fas fa-thermometer-half"></i>
+                        </div>
+                        <div class="stat-info">
+                            <div class="stat-value">${data.temperature}°C</div>
+                            <div class="stat-label">Suhu</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon humidity-stat">
+                            <i class="fas fa-tint"></i>
+                        </div>
+                        <div class="stat-info">
+                            <div class="stat-value">${data.humidity}%</div>
+                        <div class="stat-label">Kelembaban</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon rain-stat">
+                            <i class="fas fa-cloud-rain"></i>
+                        </div>
+                        <div class="stat-info">
+                            <div class="stat-value">${data.rainfall} mm</div>
+                            <div class="stat-label">Curah Hujan</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon wind-stat">
+                            <i class="fas fa-wind"></i>
+                        </div>
+                        <div class="stat-info">
+                            <div class="stat-value">${data.wind.speed} m/s</div>
+                            <div class="stat-label">Kecepatan Angin</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="recommendations">
+                    <h3><i class="fas fa-lightbulb"></i> Rekomendasi untuk Petani</h3>
+                    <ul>
+                        ${recommendations.map(rec => `<li>${rec}</li>`).join('')}
+                    </ul>
+                </div>
+            `;
+        }
+
+        function getWeatherRecommendations(data) {
+            const recommendations = [];
+            
+            if (data.condition.includes('Hujan')) {
+                recommendations.push('Tunda penyemprotan pestisida karena akan tercuci oleh hujan');
+                recommendations.push('Periksa saluran drainase untuk menghindari genangan air');
+                recommendations.push('Jika hujan lebat, pastikan tanaman tidak tergenang air terlalu lama');
+            }
+            
+            if (data.temperature > 32) {
+                recommendations.push('Lakukan penyiraman tambahan pada pagi dan sore hari');
+                recommendations.push('Pertimbangkan penggunaan naungan untuk tanaman yang sensitif');
+            }
+            
+            if (data.humidity > 80) {
+                recommendations.push('Waspada terhadap penyakit jamur, perhatikan sirkulasi udara');
+            }
+            
+            if (data.wind.speed > 5) {
+                recommendations.push('Perkuat tanaman yang rentan terhadap angin kencang');
+                recommendations.push('Tunda aplikasi pestisida sistemik karena dapat terbawa angin');
+            }
+            
+            if (recommendations.length === 0) {
+                recommendations.push('Kondisi cuaca baik untuk aktivitas pertanian');
+                recommendations.push('Lakukan perawatan rutin dan pemupukan sesuai jadwal');
+            }
+            
+            return recommendations;
+        }
+
+        // ==============================
+        // SISTEM RAMALAN CUACA 5 HARI
+        // ==============================
+
+        function displayForecast(forecastData) {
+            const container = document.getElementById('forecastContainer');
+            
+            if (!forecastData || forecastData.length === 0) {
+                container.innerHTML = '<div class="error-forecast">Data ramalan tidak tersedia</div>';
+                return;
+            }
+            
+            let forecastHTML = '';
+            
+            forecastData.forEach(day => {
+                const weatherIcon = getWeatherIcon(day.condition);
+                const dateStr = day.date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+                
+                forecastHTML += `
+                    <div class="forecast-day">
+                        <div class="day-name">${day.day}</div>
+                        <div class="day-date">${dateStr}</div>
+                        <div class="day-icon">${weatherIcon}</div>
+                        <div class="day-temp">
+                            <span class="temp-day">${day.temp.day}°</span>
+                            <span class="temp-night">${day.temp.night}°</span>
+                        </div>
+                        <div class="day-desc">${day.condition}</div>
+                        <div class="day-rain">
+                            <i class="fas fa-tint"></i> ${day.rainProbability}%
+                        </div>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = forecastHTML;
+        }
+
+        // ==============================
+        // SISTEM RAMALAN CUACA 7 HARI YANG BARU
+        // ==============================
+
+        function display7DayForecast(forecastData) {
+            const container = document.getElementById('forecast7dayContainer');
+            
+            if (!forecastData || forecastData.length === 0) {
+                container.innerHTML = '<div class="error-forecast">Data ramalan 7 hari tidak tersedia</div>';
+                return;
+            }
+            
+            let forecastHTML = '';
+            
+            forecastData.forEach(day => {
+                const weatherIcon = getWeatherIcon(day.condition);
+                const dateStr = `${day.dateNum} ${day.month}`;
+                
+                forecastHTML += `
+                    <div class="forecast-day">
+                        <div class="day-name">${day.day}</div>
+                        <div class="day-date">${dateStr}</div>
+                        <div class="day-icon">${weatherIcon}</div>
+                        <div class="day-temp">
+                            <span class="temp-day">${day.temp.day}°</span>
+                            <span class="temp-night">${day.temp.night}°</span>
+                        </div>
+                        <div class="day-desc">${day.condition}</div>
+                        <div class="day-rain">
+                            <i class="fas fa-tint"></i> ${day.rainProbability}%
+                        </div>
+                        <div class="day-details">
+                            <small><i class="fas fa-wind"></i> ${day.windSpeed} m/s</small>
+                            <small><i class="fas fa-tint"></i> ${day.humidity}%</small>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = forecastHTML;
+        }
+
+        // ==============================
+        // SISTEM AUTO-REFRESH YANG DIPERBAIKI
+        // ==============================
+
+        function setupAutoRefresh() {
+            const toggle = document.getElementById('autoRefreshToggle');
+            const intervalSelect = document.getElementById('refreshInterval');
+            const refreshStatusText = document.getElementById('refreshStatusText');
+            
+            // Load saved settings
+            const savedInterval = localStorage.getItem('refreshInterval') || '15';
+            const savedAutoRefresh = localStorage.getItem('autoRefresh') !== 'false';
+            
+            toggle.checked = savedAutoRefresh;
+            intervalSelect.value = savedInterval;
+            
+            isAutoRefreshEnabled = savedAutoRefresh;
+            CONFIG.AUTO_REFRESH_INTERVAL = parseInt(savedInterval) * 60 * 1000;
+            
+            updateRefreshStatus();
+            scheduleNextRefresh();
+            
+            // Event listeners
+            toggle.addEventListener('change', function() {
+                isAutoRefreshEnabled = this.checked;
+                localStorage.setItem('autoRefresh', this.checked);
+                updateRefreshStatus();
+                scheduleNextRefresh();
+            });
+            
+            intervalSelect.addEventListener('change', function() {
+                CONFIG.AUTO_REFRESH_INTERVAL = parseInt(this.value) * 60 * 1000;
+                localStorage.setItem('refreshInterval', this.value);
+                scheduleNextRefresh();
+            });
+            
+            // Manual refresh button
+            document.getElementById('refreshWeather').addEventListener('click', function() {
+                updateWeatherData();
+                scheduleNextRefresh();
+            });
+        }
+
+        function updateRefreshStatus() {
+            const refreshStatusText = document.getElementById('refreshStatusText');
+            
+            if (isAutoRefreshEnabled) {
+                refreshStatusText.textContent = 'Aktif';
+                refreshStatusText.className = 'status-ok';
+            } else {
+                refreshStatusText.textContent = 'Nonaktif';
+                refreshStatusText.className = 'status-missing';
+            }
+        }
+
+        function scheduleNextRefresh() {
+            // Clear existing timer
+            if (autoRefreshTimer) {
+                clearTimeout(autoRefreshTimer);
+            }
+            
+            if (isAutoRefreshEnabled) {
+                // Schedule next refresh
+                autoRefreshTimer = setTimeout(() => {
+                    if (isUserActive) {
+                        updateWeatherData();
+                    }
+                    scheduleNextRefresh();
+                }, CONFIG.AUTO_REFRESH_INTERVAL);
+                
+                // Update next refresh time display
+                const nextRefresh = new Date(Date.now() + CONFIG.AUTO_REFRESH_INTERVAL);
+                document.getElementById('nextRefreshTime').textContent = 
+                    nextRefresh.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+            } else {
+                document.getElementById('nextRefreshTime').textContent = '-';
+            }
+        }
+
+        // ==============================
+        // SISTEM TAB FORECAST
+        // ==============================
+
+        function setupForecastTabs() {
+            const tabs = document.querySelectorAll('.forecast-tab');
+            
+            tabs.forEach(tab => {
+                tab.addEventListener('click', function() {
+                    const tabId = this.getAttribute('data-tab');
+                    
+                    // Update active tab
+                    tabs.forEach(t => t.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    // Show corresponding content
+                    document.querySelectorAll('.forecast-content').forEach(content => {
+                        content.classList.remove('active');
+                    });
+                    document.getElementById(`forecast${tabId}`).classList.add('active');
+                });
+            });
+        }
+
+        // ==============================
+        // DEBUG FUNCTION
+        // ==============================
+
+        function debugForecastData() {
+            console.log('=== DEBUG FORECAST DATA ===');
+            console.log('Current Location:', userLocation);
+            console.log('Current Weather Data:', currentWeatherData);
+            
+            if (currentWeatherData) {
+                console.log('5-Day Forecast:', currentWeatherData.forecast);
+                console.log('7-Day Forecast:', currentWeatherData.forecast7day);
+            }
+            
+            showNotification('Data forecast telah dicetak ke console', 'info');
+        }
+
+        // ==============================
+        // FUNGSI GEOCODING
+        // ==============================
+
+        // Fungsi untuk mencari lokasi menggunakan OpenStreetMap Nominatim API
+        async function searchLocationWithAPI(query) {
+            try {
+                const url = `${CONFIG.NOMINATIM_API_URL}?q=${encodeURIComponent(query + ', Indonesia')}&format=json&limit=5&addressdetails=1`;
+                
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                
+                const data = await response.json();
+                
+                if (data && data.length > 0) {
+                    return data.map(item => ({
+                        name: item.display_name,
+                        lat: parseFloat(item.lat),
+                        lon: parseFloat(item.lon),
+                        importance: item.importance,
+                        type: item.type,
+                        address: item.address
+                    }));
+                } else {
+                    return [];
+                }
+            } catch (error) {
+                console.error('Error searching location:', error);
+                // Fallback ke database lokal jika API gagal
+                return searchLocationLocal(query);
+            }
+        }
+
+        // Fungsi fallback untuk pencarian lokal
+        function searchLocationLocal(query) {
+            const results = [];
+            const queryLower = query.toLowerCase();
+            
+            for (const [name, coords] of Object.entries(locationDatabase)) {
+                if (name.toLowerCase().includes(queryLower)) {
+                    results.push({
+                        name: name + ', Indonesia',
+                        lat: coords.lat,
+                        lon: coords.lng,
+                        importance: 1,
+                        type: 'city'
+                    });
+                }
+            }
+            
+            return results;
+        }
+
+        // Fungsi untuk reverse geocoding (dari koordinat ke nama lokasi)
+        async function reverseGeocode(lat, lng) {
+            try {
+                const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1`;
+                
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                
+                const data = await response.json();
+                
+                if (data && data.address) {
+                    const address = data.address;
+                    let locationName = '';
+                    
+                    // Prioritaskan nama kota/kabupaten
+                    if (address.city) {
+                        locationName = address.city;
+                    } else if (address.town) {
+                        locationName = address.town;
+                    } else if (address.village) {
+                        locationName = address.village;
+                    } else if (address.municipality) {
+                        locationName = address.municipality;
+                    } else if (address.county) {
+                        locationName = address.county;
+                    } else if (address.state) {
+                        locationName = address.state;
+                    } else {
+                        locationName = 'Lokasi Tidak Dikenal';
+                    }
+                    
+                    return {
+                        name: locationName,
+                        fullAddress: data.display_name,
+                        address: address
+                    };
+                } else {
+                    return {
+                        name: 'Lokasi Tidak Dikenal',
+                        fullAddress: 'Tidak dapat menentukan lokasi',
+                        address: {}
+                    };
+                }
+            } catch (error) {
+                console.error('Error reverse geocoding:', error);
+                return {
+                    name: 'Lokasi Tidak Dikenal',
+                    fullAddress: 'Error mendapatkan nama lokasi',
+                    address: {}
+                };
+            }
+        }
+
+        // ==============================
+        // FUNGSI TANAMAN
+        // ==============================
+
+        // Fungsi untuk inisialisasi sistem tanaman
+        function initPlantsSystem() {
+            loadPlants();
+            setupPlantForm();
+            renderPlantsGrid();
+        }
+
+        // Fungsi untuk memuat tanaman dari localStorage
+        function loadPlants() {
+            const savedPlants = localStorage.getItem('cuacatani_plants');
+            if (savedPlants) {
+                plants = JSON.parse(savedPlants);
+            } else {
+                // Data tanaman contoh
+                plants = [
+                    {
+                        id: 1,
+                        name: "Padi Sawah IR64",
+                        type: "padi",
+                        plantDate: "2023-10-15",
+                        harvestDays: 90,
+                        landArea: 2.5,
+                        status: "growing",
+                        createdAt: new Date()
+                    },
+                    {
+                        id: 2,
+                        name: "Jagung Manis",
+                        type: "jagung",
+                        plantDate: "2023-11-01",
+                        harvestDays: 75,
+                        landArea: 1.2,
+                        status: "growing",
+                        createdAt: new Date()
+                    }
+                ];
+                savePlants();
+            }
+        }
+
+        // Fungsi untuk menyimpan tanaman ke localStorage
+        function savePlants() {
+            localStorage.setItem('cuacatani_plants', JSON.stringify(plants));
+        }
+
+        // Fungsi untuk mengatur form tanaman
+        function setupPlantForm() {
+            const addPlantBtn = document.getElementById('addPlantBtn');
+            const plantForm = document.getElementById('plantForm');
+            const submitPlant = document.getElementById('submitPlant');
+            const cancelPlant = document.getElementById('cancelPlant');
+            
+            // Tampilkan form saat tombol "Tambah Tanaman Baru" diklik
+            addPlantBtn.addEventListener('click', function() {
+                plantForm.style.display = 'block';
+                addPlantBtn.style.display = 'none';
+            });
+            
+            // Sembunyikan form saat tombol "Batal" diklik
+            cancelPlant.addEventListener('click', function() {
+                plantForm.style.display = 'none';
+                addPlantBtn.style.display = 'block';
+                resetPlantForm();
+            });
+            
+            // Proses form saat tombol "Simpan" diklik
+            submitPlant.addEventListener('click', function() {
+                addNewPlant();
+            });
+        }
+
+        // Fungsi untuk mereset form tanaman
+        function resetPlantForm() {
+            document.getElementById('plantType').value = 'padi';
+            document.getElementById('plantName').value = '';
+            document.getElementById('plantDate').value = '';
+            document.getElementById('harvestDays').value = '';
+            document.getElementById('landArea').value = '';
+        }
+
+        // Fungsi untuk menambah tanaman baru
+        function addNewPlant() {
+            const plantType = document.getElementById('plantType').value;
+            const plantName = document.getElementById('plantName').value.trim();
+            const plantDate = document.getElementById('plantDate').value;
+            const harvestDays = parseInt(document.getElementById('harvestDays').value);
+            const landArea = parseFloat(document.getElementById('landArea').value);
+            
+            // Validasi input
+            if (!plantName) {
+                showNotification('Nama tanaman harus diisi', 'error');
+                return;
+            }
+            
+            if (!plantDate) {
+                showNotification('Tanggal tanam harus diisi', 'error');
+                return;
+            }
+            
+            if (!harvestDays || harvestDays <= 0) {
+                showNotification('Estimasi panen harus diisi dengan angka positif', 'error');
+                return;
+            }
+            
+            if (!landArea || landArea <= 0) {
+                showNotification('Luas lahan harus diisi dengan angka positif', 'error');
+                return;
+            }
+            
+            // Buat ID unik untuk tanaman baru
+            const newId = plants.length > 0 ? Math.max(...plants.map(p => p.id)) + 1 : 1;
+            
+            // Tentukan status berdasarkan tanggal tanam
+            const today = new Date();
+            const plantDateObj = new Date(plantDate);
+            const daysSincePlanting = Math.floor((today - plantDateObj) / (1000 * 60 * 60 * 24));
+            
+            let status = "planted";
+            if (daysSincePlanting > harvestDays * 0.7) {
+                status = "ready";
+            } else if (daysSincePlanting > harvestDays * 0.3) {
+                status = "growing";
+            }
+            
+            // Tambahkan tanaman baru
+            const newPlant = {
+                id: newId,
+                name: plantName,
+                type: plantType,
+                plantDate: plantDate,
+                harvestDays: harvestDays,
+                landArea: landArea,
+                status: status,
+                createdAt: new Date()
+            };
+            
+            plants.push(newPlant);
+            savePlants();
+            
+            // Perbarui tampilan
+            renderPlantsGrid();
+            
+            // Sembunyikan form dan reset
+            document.getElementById('plantForm').style.display = 'none';
+            document.getElementById('addPlantBtn').style.display = 'block';
+            resetPlantForm();
+            
+            // Tampilkan notifikasi
+            showNotification('Tanaman berhasil ditambahkan', 'success');
+            
+            // Kirim notifikasi ke Telegram jika tanaman siap panen
+            if (status === "ready") {
+                sendHarvestNotification(newPlant);
+            }
+        }
+
+        // Fungsi untuk merender grid tanaman
+        function renderPlantsGrid() {
+            const plantsGrid = document.getElementById('plantsGrid');
+            
+            if (plants.length === 0) {
+                plantsGrid.innerHTML = `
+                    <div style="grid-column: 1 / -1; text-align: center; padding: 20px; color: #666;">
+                        <i class="fas fa-seedling" style="font-size: 2rem; margin-bottom: 10px; display: block;"></i>
+                        <p>Belum ada tanaman. Tambahkan tanaman pertama Anda!</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            let plantsHTML = '';
+            
+            plants.forEach(plant => {
+                const plantDate = new Date(plant.plantDate);
+                const harvestDate = new Date(plantDate);
+                harvestDate.setDate(harvestDate.getDate() + plant.harvestDays);
+                
+                const today = new Date();
+                const daysUntilHarvest = Math.ceil((harvestDate - today) / (1000 * 60 * 60 * 24));
+                
+                // Tentukan status teks dan kelas CSS
+                let statusText, statusClass;
+                switch(plant.status) {
+                    case 'planted':
+                        statusText = 'Baru Ditanam';
+                        statusClass = 'status-planted';
+                        break;
+                    case 'growing':
+                        statusText = 'Sedang Tumbuh';
+                        statusClass = 'status-growing';
+                        break;
+                    case 'ready':
+                        statusText = 'Siap Panen';
+                        statusClass = 'status-ready';
+                        break;
+                    case 'harvest':
+                        statusText = 'Sudah Dipanen';
+                        statusClass = 'status-harvest';
+                        break;
+                    default:
+                        statusText = 'Tidak Diketahui';
+                        statusClass = 'status-planted';
+                }
+                
+                // Tentukan ikon berdasarkan jenis tanaman
+                let plantIcon;
+                switch(plant.type) {
+                    case 'padi':
+                        plantIcon = 'fa-leaf';
+                        break;
+                    case 'jagung':
+                        plantIcon = 'fa-seedling';
+                        break;
+                    case 'kedelai':
+                        plantIcon = 'fa-seedling';
+                        break;
+                    case 'cabe':
+                        plantIcon = 'fa-pepper-hot';
+                        break;
+                    case 'tomat':
+                        plantIcon = 'fa-apple-alt';
+                        break;
+                    case 'kentang':
+                        plantIcon = 'fa-carrot';
+                        break;
+                    case 'bawang':
+                        plantIcon = 'fa-onion';
+                        break;
+                    default:
+                        plantIcon = 'fa-seedling';
+                }
+                
+                plantsHTML += `
+                    <div class="plant-card">
+                        <div class="plant-header">
+                            <div class="plant-icon">
+                                <i class="fas ${plantIcon}"></i>
+                            </div>
+                            <div class="plant-name">${plant.name}</div>
+                        </div>
+                        <div class="plant-details">
+                            <div class="plant-detail">
+                                <span>Jenis:</span>
+                                <span>${getPlantTypeName(plant.type)}</span>
+                            </div>
+                            <div class="plant-detail">
+                                <span>Tanggal Tanam:</span>
+                                <span>${plantDate.toLocaleDateString('id-ID')}</span>
+                            </div>
+                            <div class="plant-detail">
+                                <span>Estimasi Panen:</span>
+                                <span>${plant.harvestDays} hari</span>
+                            </div>
+                            <div class="plant-detail">
+                                <span>Luas Lahan:</span>
+                                <span>${plant.landArea} hektar</span>
+                            </div>
+                            <div class="plant-detail">
+                                <span>Status:</span>
+                                <span class="plant-status ${statusClass}">${statusText}</span>
+                            </div>
+                            <div class="plant-detail">
+                                <span>Sisa Waktu:</span>
+                                <span>${daysUntilHarvest > 0 ? daysUntilHarvest + ' hari' : 'Siap panen!'}</span>
+                            </div>
+                        </div>
+                        <div style="margin-top: 10px; display: flex; gap: 5px;">
+                            <button class="test-btn" onclick="markAsHarvested(${plant.id})" style="background: #4CAF50; font-size: 0.8rem; padding: 5px 10px;">
+                                <i class="fas fa-check"></i> Tandai Panen
+                            </button>
+                            <button class="test-btn" onclick="deletePlant(${plant.id})" style="background: #f44336; font-size: 0.8rem; padding: 5px 10px;">
+                                <i class="fas fa-trash"></i> Hapus
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            plantsGrid.innerHTML = plantsHTML;
+        }
+
+        // Fungsi untuk menandai tanaman sebagai sudah dipanen
+        function markAsHarvested(plantId) {
+            const plantIndex = plants.findIndex(p => p.id === plantId);
+            if (plantIndex !== -1) {
+                plants[plantIndex].status = "harvest";
+                savePlants();
+                renderPlantsGrid();
+                showNotification('Tanaman berhasil ditandai sebagai sudah dipanen', 'success');
+                
+                // Kirim notifikasi panen ke Telegram
+                sendHarvestCompletedNotification(plants[plantIndex]);
+            }
+        }
+
+        // Fungsi untuk menghapus tanaman
+        function deletePlant(plantId) {
+            if (confirm('Apakah Anda yakin ingin menghapus tanaman ini?')) {
+                plants = plants.filter(p => p.id !== plantId);
+                savePlants();
+                renderPlantsGrid();
+                showNotification('Tanaman berhasil dihapus', 'success');
+            }
+        }
+
+        // Fungsi untuk mengirim notifikasi panen ke Telegram
+        async function sendHarvestNotification(plant) {
+            const plantDate = new Date(plant.plantDate);
+            const harvestDate = new Date(plantDate);
+            harvestDate.setDate(harvestDate.getDate() + plant.harvestDays);
+            
+            const message = `
+🌱 <b>PENGINGAT PANEN</b>
+━━━━━━━━━━━━━━━━━━━━
+📅 <b>Tanaman:</b> ${plant.name}
+🌿 <b>Jenis:</b> ${getPlantTypeName(plant.type)}
+⏰ <b>Waktu Panen:</b> ${harvestDate.toLocaleDateString('id-ID')}
+📏 <b>Luas Lahan:</b> ${plant.landArea} hektar
+📅 <b>Tanggal Tanam:</b> ${plantDate.toLocaleDateString('id-ID')}
+
+<b>Persiapan Panen:</b>
+• Siapkan alat panen
+• Siapkan tenaga kerja
+• Periksa kondisi tanaman
+• Siapkan tempat penyimpanan
+
+⏰ <b>Waktu Notifikasi:</b> ${new Date().toLocaleString('id-ID')}
+
+<i>Selamat panen! 🎉</i>
+            `.trim();
+
+            await sendTelegramMessage(message);
+        }
+
+        // Fungsi untuk mengirim notifikasi panen selesai ke Telegram
+        async function sendHarvestCompletedNotification(plant) {
+            const message = `
+✅ <b>PANEN SELESAI</b>
+━━━━━━━━━━━━━━━━━━━━
+📅 <b>Tanaman:</b> ${plant.name}
+🌿 <b>Jenis:</b> ${getPlantTypeName(plant.type)}
+📏 <b>Luas Lahan:</b> ${plant.landArea} hektar
+🎉 <b>Status:</b> Berhasil dipanen
+
+<b>Selanjutnya:</b>
+• Evaluasi hasil panen
+• Persiapan lahan untuk tanam berikutnya
+• Perencanaan tanaman selanjutnya
+
+⏰ <b>Waktu Notifikasi:</b> ${new Date().toLocaleString('id-ID')}
+
+<i>Selamat atas panen yang berhasil! 🎉</i>
+            `.trim();
+
+            await sendTelegramMessage(message);
+        }
+
+        // Fungsi untuk memeriksa tanaman yang siap panen
+        function checkHarvestReadyPlants() {
+            const today = new Date();
+            
+            plants.forEach(plant => {
+                if (plant.status !== "harvest") {
+                    const plantDate = new Date(plant.plantDate);
+                    const harvestDate = new Date(plantDate);
+                    harvestDate.setDate(harvestDate.getDate() + plant.harvestDays);
+                    
+                    const daysUntilHarvest = Math.ceil((harvestDate - today) / (1000 * 60 * 60 * 24));
+                    
+                    // Jika tanaman siap panen (kurang dari 7 hari lagi) dan belum ditandai sebagai siap panen
+                    if (daysUntilHarvest <= 7 && plant.status !== "ready") {
+                        plant.status = "ready";
+                        sendHarvestNotification(plant);
+                    }
+                }
+            });
+            
+            savePlants();
+            renderPlantsGrid();
+        }
+
+        // Fungsi untuk mendapatkan nama jenis tanaman
+        function getPlantTypeName(type) {
+            const typeNames = {
+                'padi': 'Padi',
+                'jagung': 'Jagung',
+                'kedelai': 'Kedelai',
+                'cabe': 'Cabe',
+                'tomat': 'Tomat',
+                'kentang': 'Kentang',
+                'bawang': 'Bawang Merah/Putih',
+                'lainnya': 'Lainnya'
+            };
+            return typeNames[type] || type;
+        }
+
+        // ==============================
+        // INISIALISASI APLIKASI
+        // ==============================
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize components
+            initMap();
+            updateDateTime();
+            setupAutoRefresh();
+            setupForecastTabs();
+            trackUserActivity();
+            initPlantsSystem();
+            loadWateringSchedule();
+            
+            // Setup watering frequency buttons
+            document.querySelectorAll('.frequency-option').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.frequency-option').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                });
+            });
+            
+            // Update date time every second
+            setInterval(updateDateTime, 1000);
+            
+            // Request location access immediately on startup
+            setTimeout(() => {
+                requestLocationOnStart();
+            }, 1000);
+            
+            // Start background notifications
+            startBackgroundNotifications();
+            
+            // Check for harvest-ready plants every hour
+            setInterval(checkHarvestReadyPlants, 60 * 60 * 1000);
+            
+            // Event listeners
+            document.getElementById('searchLocation').addEventListener('click', function() {
+                const locationInput = document.getElementById('locationInput').value.trim();
+                if (locationInput) {
+                    searchLocation(locationInput);
+                } else {
+                    showNotification('Masukkan nama lokasi terlebih dahulu', 'warning');
+                }
+            });
+            
+            document.getElementById('locationInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    const locationInput = this.value.trim();
+                    if (locationInput) {
+                        searchLocation(locationInput);
+                    }
+                }
+            });
+            
+            document.getElementById('locateMe').addEventListener('click', locateUser);
+            
+            // Saved locations
+            document.querySelectorAll('.saved-location-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const location = this.getAttribute('data-location');
+                    document.getElementById('locationInput').value = location;
+                    searchLocation(location);
+                });
+            });
+            
+            // Debug button
+            document.getElementById('debugForecast').addEventListener('click', debugForecastData);
+            
+            // Initial user activity indicator
+            updateUserActivityIndicator();
+
+            // Kirim notifikasi selamat datang otomatis
+            setTimeout(() => {
+                const welcomeMessage = `
+🎉 <b>SELAMAT DATANG DI CUACATANI!</b>
+━━━━━━━━━━━━━━━━━━━━
+Aplikasi CuacaTani berhasil dijalankan dan siap digunakan.
+
+📍 <b>Lokasi Default:</b> ${userLocation.name}
+⏰ <b>Waktu:</b> ${new Date().toLocaleString('id-ID')}
+✅ <b>Status:</b> Sistem berjalan normal
+
+<b>Fitur yang tersedia:</b>
+• Ramalan cuaca 7 hari
+• Notifikasi otomatis
+• Manajemen tanaman
+• Rekomendasi pertanian
+• Jadwal penyiraman otomatis
+
+Gunakan tombol "Kirim Laporan Cuaca" untuk mendapatkan informasi cuaca terkini.
+
+<i>Selamat menggunakan CuacaTani! 🚜</i>
+                `.trim();
+
+                sendTelegramMessage(welcomeMessage);
+            }, 5000);
+        });
+    </script>
+</body>
+</html>
